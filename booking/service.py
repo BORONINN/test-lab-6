@@ -49,6 +49,13 @@ class BookingService:
             status=BookingStatus.ACTIVE,
         )
         self._repository.add(booking)
+        self._notification_service.notify_booking_created(
+            user_id=booking.user_id,
+            booking_id=booking.id,
+            room_id=booking.room_id,
+            start_at=booking.start_at,
+            end_at=booking.end_at,
+        )
         return booking
 
     def get_booking(self, booking_id: str) -> Booking:
