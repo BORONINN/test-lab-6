@@ -1,4 +1,5 @@
 from .errors import (
+    BookingCancellationError,
     BookingConflictError,
     BookingNotFoundError,
     InvalidBookingTimeError,
@@ -9,6 +10,7 @@ from .repository import BookingRepository, InMemoryBookingRepository
 from .service import BookingService
 
 __all__ = [
+    "BookingCancellationError",
     "Booking",
     "BookingConflictError",
     "BookingNotFoundError",

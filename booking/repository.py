@@ -8,6 +8,12 @@ from .rules import intervals_overlap
 
 
 class BookingRepository(Protocol):
+    def update_status(
+        self, booking_id: str, expected_status: BookingStatus, new_status: BookingStatus
+    ) -> Booking:
+        """Change status only if it still matches expected_status, atomically."""
+        ...
+
     def add(self, booking: Booking) -> None:
         """Insert a booking, checking room existence and conflicts atomically."""
         ...
@@ -21,6 +27,11 @@ class BookingRepository(Protocol):
 
 
 class InMemoryBookingRepository:
+    def update_status(
+        self, booking_id: str, expected_status: BookingStatus, new_status: BookingStatus
+    ) -> Booking:
+        raise NotImplementedError
+
     def __init__(self, room_ids: Iterable[str]) -> None:
         self._room_ids = set(room_ids)
         self._bookings: dict[str, Booking] = {}

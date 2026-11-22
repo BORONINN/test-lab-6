@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from uuid import uuid4
 
@@ -8,8 +9,14 @@ from .rules import validate_duration, validate_order, validate_working_hours
 
 
 class BookingService:
-    def __init__(self, repository: BookingRepository) -> None:
+    def __init__(
+        self, repository: BookingRepository, *, clock: Callable[[], datetime] = datetime.now
+    ) -> None:
         self._repository = repository
+        self._clock = clock
+
+    def cancel_booking(self, booking_id: str, user_id: str) -> Booking:
+        raise NotImplementedError
 
     def create_booking(
         self, room_id: str, user_id: str, start_at: datetime, end_at: datetime
