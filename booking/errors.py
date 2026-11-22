@@ -12,3 +12,7 @@ class BookingNotFoundError(LookupError):
 
 class RoomNotFoundError(LookupError):
     pass
+
+
+class BookingCancellationError(ValueError):
+    pass

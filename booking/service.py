@@ -1,15 +1,37 @@
+from collections.abc import Callable
 from datetime import datetime
 from uuid import uuid4
 
-from .errors import BookingNotFoundError
+from .errors import BookingCancellationError, BookingNotFoundError
 from .models import Booking, BookingStatus
+from .notifications import NotificationService
 from .repository import BookingRepository
 from .rules import validate_duration, validate_order, validate_working_hours
 
 
 class BookingService:
-    def __init__(self, repository: BookingRepository) -> None:
+    def __init__(
+        self,
+        repository: BookingRepository,
+        *,
+        clock: Callable[[], datetime] = datetime.now,
+        notification_service: NotificationService,
+    ) -> None:
         self._repository = repository
+        self._clock = clock
+        self._notification_service = notification_service
+
+    def cancel_booking(self, booking_id: str, user_id: str) -> Booking:
+        booking = self.get_booking(booking_id)
+        if booking.user_id != user_id:
+            raise BookingCancellationError("Only the owner can cancel the booking.")
+        if booking.status is not BookingStatus.ACTIVE:
+            raise BookingCancellationError("Only active bookings can be cancelled.")
+        if self._clock() >= booking.start_at:
+            raise BookingCancellationError("Cancel before the booking starts.")
+        return self._repository.update_status(
+            booking_id, BookingStatus.ACTIVE, BookingStatus.CANCELLED
+        )
 
     def create_booking(
         self, room_id: str, user_id: str, start_at: datetime, end_at: datetime
@@ -27,6 +49,13 @@ class BookingService:
             status=BookingStatus.ACTIVE,
         )
         self._repository.add(booking)
+        self._notification_service.notify_booking_created(
+            user_id=booking.user_id,
+            booking_id=booking.id,
+            room_id=booking.room_id,
+            start_at=booking.start_at,
+            end_at=booking.end_at,
+        )
         return booking
 
     def get_booking(self, booking_id: str) -> Booking:
