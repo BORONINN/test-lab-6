@@ -128,3 +128,15 @@ class BookingStatusUpdateTests(TestCase):
             self.repository.update_status(
                 "unknown", BookingStatus.ACTIVE, BookingStatus.CANCELLED
             )
+
+    def test_status_update_cannot_reactivate_booking(self) -> None:
+        cancelled = self.repository.update_status(
+            self.booking.id, BookingStatus.ACTIVE, BookingStatus.CANCELLED
+        )
+
+        with self.assertRaises(ValueError):
+            self.repository.update_status(
+                self.booking.id, BookingStatus.CANCELLED, BookingStatus.ACTIVE
+            )
+
+        self.assertEqual(self.repository.get(self.booking.id), cancelled)

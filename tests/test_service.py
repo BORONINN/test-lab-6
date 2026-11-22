@@ -28,18 +28,32 @@ class BookingServiceTests(TestCase):
             self.repository, notification_service=create_autospec(NotificationService, instance=True)
         )
 
-    def test_a2_get_and_list_bookings_include_cancelled(self) -> None:
+    def test_a2_get_returns_active_booking(self) -> None:
+        active = self.service.create_booking("room1", "user1", at(11), at(12))
+
+        self.assertEqual(self.service.get_booking(active.id), active)
+
+    def test_a2_get_returns_cancelled_booking(self) -> None:
+        cancelled = Booking(
+            "old-id", "room1", "user1", at(10), at(11), BookingStatus.CANCELLED
+        )
+        self.repository.add(cancelled)
+
+        self.assertEqual(self.service.get_booking(cancelled.id), cancelled)
+
+    def test_a2_list_includes_both_statuses(self) -> None:
         active = self.service.create_booking("room1", "user1", at(11), at(12))
         cancelled = Booking(
             "old-id", "room1", "user1", at(10), at(11), BookingStatus.CANCELLED
         )
         self.repository.add(cancelled)
+        self.assertEqual(self.service.list_bookings("room1"), [cancelled, active])
+
+    def test_a2_list_excludes_other_rooms(self) -> None:
+        active = self.service.create_booking("room1", "user1", at(10), at(11))
         self.service.create_booking("room2", "user1", at(10), at(11))
 
-        self.assertEqual(active.status, BookingStatus.ACTIVE)
-        self.assertEqual(self.service.get_booking(active.id), active)
-        self.assertEqual(self.service.get_booking(cancelled.id), cancelled)
-        self.assertEqual(self.service.list_bookings("room1"), [cancelled, active])
+        self.assertEqual(self.service.list_bookings("room1"), [active])
 
     def test_a2_list_is_empty_for_free_room(self) -> None:
         self.service.create_booking("room2", "user1", at(10), at(11))
@@ -58,14 +72,24 @@ class BookingServiceTests(TestCase):
 
         self.assertEqual(self.service.list_bookings("room1"), [active])
 
-    def test_a3_other_rooms_and_adjacent_intervals_are_available(self) -> None:
+    def test_a3_adjacent_interval_is_available(self) -> None:
         active = self.service.create_booking("room1", "user1", at(10), at(11))
         next_booking = self.service.create_booking("room1", "user2", at(11), at(12))
+        self.assertEqual(self.service.list_bookings("room1"), [active, next_booking])
+
+    def test_a3_same_interval_in_other_room_is_available(self) -> None:
+        self.service.create_booking("room1", "user1", at(10), at(11))
+
         other_room = self.service.create_booking("room2", "user2", at(10), at(11))
 
-        self.assertEqual(self.service.list_bookings("room1"), [active, next_booking])
         self.assertEqual(self.service.list_bookings("room2"), [other_room])
-        self.assertEqual(len({active.id, next_booking.id, other_room.id}), 3)
+
+    def test_create_assigns_different_ids(self) -> None:
+        first = self.service.create_booking("room1", "user1", at(10), at(11))
+
+        second = self.service.create_booking("room1", "user1", at(11), at(12))
+
+        self.assertNotEqual(first.id, second.id)
 
     def test_a3_cancelled_record_does_not_block_creation(self) -> None:
         cancelled = Booking(
@@ -84,8 +108,9 @@ class BookingServiceTests(TestCase):
 
         def try_booking(user_id: str) -> Booking | None:
             service = BookingService(
-            self.repository, notification_service=create_autospec(NotificationService, instance=True)
-        )
+                self.repository,
+                notification_service=create_autospec(NotificationService, instance=True),
+            )
             start_together.wait()
             try:
                 return service.create_booking("room1", user_id, at(10), at(11))
