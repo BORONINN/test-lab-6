@@ -1,8 +1,14 @@
 from collections.abc import Iterable
+from dataclasses import replace
 from threading import Lock
 from typing import Protocol
 
-from .errors import BookingConflictError, RoomNotFoundError
+from .errors import (
+    BookingCancellationError,
+    BookingConflictError,
+    BookingNotFoundError,
+    RoomNotFoundError,
+)
 from .models import Booking, BookingStatus
 from .rules import intervals_overlap
 
@@ -30,7 +36,17 @@ class InMemoryBookingRepository:
     def update_status(
         self, booking_id: str, expected_status: BookingStatus, new_status: BookingStatus
     ) -> Booking:
-        raise NotImplementedError
+        with self._lock:
+            booking = self._bookings.get(booking_id)
+            if booking is None:
+                raise BookingNotFoundError(f"Unknown booking: {booking_id}")
+            if booking.status is not expected_status:
+                raise BookingCancellationError("The booking status has changed.")
+            updated = replace(booking, status=new_status)
+            if new_status is BookingStatus.ACTIVE:
+                raise ValueError("Status updates cannot reactivate a booking.")
+            self._bookings[booking_id] = updated
+            return updated
 
     def __init__(self, room_ids: Iterable[str]) -> None:
         self._room_ids = set(room_ids)
