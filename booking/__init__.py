@@ -6,6 +6,7 @@ from .errors import (
     RoomNotFoundError,
 )
 from .models import Booking, BookingStatus
+from .notifications import NotificationService
 from .repository import BookingRepository, InMemoryBookingRepository
 from .service import BookingService
 
@@ -18,6 +19,7 @@ __all__ = [
     "BookingService",
     "BookingStatus",
     "InMemoryBookingRepository",
+    "NotificationService",
     "InvalidBookingTimeError",
     "RoomNotFoundError",
 ]

@@ -1,6 +1,7 @@
 from dataclasses import replace
 from datetime import datetime
 from unittest import TestCase
+from unittest.mock import create_autospec
 
 from booking import (
     BookingCancellationError,
@@ -8,6 +9,7 @@ from booking import (
     BookingService,
     BookingStatus,
     InMemoryBookingRepository,
+    NotificationService,
 )
 
 
@@ -19,7 +21,10 @@ class BookingCancellationTests(TestCase):
     def setUp(self) -> None:
         self.repository = InMemoryBookingRepository(["room1"])
         self.now = at(9, 59)
-        self.service = BookingService(self.repository, clock=lambda: self.now)
+        self.service = BookingService(
+            self.repository, clock=lambda: self.now,
+            notification_service=create_autospec(NotificationService, instance=True),
+        )
         self.booking = self.service.create_booking("room1", "user1", at(10), at(11))
 
     def test_a4_owner_can_cancel_before_start(self) -> None:
@@ -94,7 +99,9 @@ class BookingCancellationTests(TestCase):
 class BookingStatusUpdateTests(TestCase):
     def setUp(self) -> None:
         self.repository = InMemoryBookingRepository(["room1"])
-        self.service = BookingService(self.repository)
+        self.service = BookingService(
+            self.repository, notification_service=create_autospec(NotificationService, instance=True)
+        )
         self.booking = self.service.create_booking("room1", "user1", at(10), at(11))
 
     def test_status_update_preserves_booking_data(self) -> None:

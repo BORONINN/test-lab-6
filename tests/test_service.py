@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Barrier
 from unittest import TestCase
+from unittest.mock import create_autospec
 
 from booking import (
     Booking,
@@ -10,6 +11,7 @@ from booking import (
     BookingService,
     BookingStatus,
     InMemoryBookingRepository,
+    NotificationService,
     InvalidBookingTimeError,
     RoomNotFoundError,
 )
@@ -22,7 +24,9 @@ def at(hour: int, minute: int = 0) -> datetime:
 class BookingServiceTests(TestCase):
     def setUp(self) -> None:
         self.repository = InMemoryBookingRepository(["room1", "room2"])
-        self.service = BookingService(self.repository)
+        self.service = BookingService(
+            self.repository, notification_service=create_autospec(NotificationService, instance=True)
+        )
 
     def test_a2_get_and_list_bookings_include_cancelled(self) -> None:
         active = self.service.create_booking("room1", "user1", at(11), at(12))
@@ -79,7 +83,9 @@ class BookingServiceTests(TestCase):
         start_together = Barrier(2, timeout=5)
 
         def try_booking(user_id: str) -> Booking | None:
-            service = BookingService(self.repository)
+            service = BookingService(
+            self.repository, notification_service=create_autospec(NotificationService, instance=True)
+        )
             start_together.wait()
             try:
                 return service.create_booking("room1", user_id, at(10), at(11))
